@@ -1,4 +1,13 @@
+function CheckCollision(p1, p2)
+  local distance = math.sqrt((p1.x - p2.x)^2 + (p1.y - p2.y)^2)
+  --return whether the distance is lower than the sum of the sizes
+  return distance < p1.size + p2.size
+end
+
 function love.load()
+  ShakeDuration = 0
+  ShakeWait = 0
+  ShakeOffset = { x = 0, y = 0 }
   lume = require "lume"
   Player = {
     x = 100,
@@ -37,9 +46,21 @@ function love.load()
     end
   end
 
+  Score = 0
+
 end
 
 function love.update(dt)
+  
+  if ShakeDuration > 0 then
+    ShakeDuration = ShakeDuration - dt
+    if ShakeWait > 0 then
+      ShakeWait = ShakeWait - dt
+    else
+      ShakeOffset.x,ShakeOffset.y = love.math.random(-5,5), love.math.random(-5,5)
+      ShakeWait = 0.05
+    end
+  end
   if love.keyboard.isDown("left") then
     Player.x = Player.x - 200 * dt
   elseif love.keyboard.isDown("right") then
@@ -56,23 +77,32 @@ function love.update(dt)
     if CheckCollision(Player, Coins[i]) then
       table.remove(Coins, i)
       Player.size = Player.size + 1
+      Score = Score + 1
+      ShakeDuration = 0.3
       end
     end
   end
 
 function love.draw()
+  love.graphics.push() --make a copy of the current state and push it onto the stack
+  love.graphics.translate(-Player.x + 400, -Player.y + 300)
+
+  if ShakeDuration > 0 then
+    --translate w/ a random number between -5 and 5
+    --the second translate will be done based on the previous translate
+    --so, it will not reset the previous translate
+    love.graphics.translate(ShakeOffset.x, ShakeOffset.y)
+  end
+
   love.graphics.circle("line", Player.x, Player.y, Player.size)
   love.graphics.draw(Player.image, Player.x, Player.y, 0, 1, 1, Player.image:getWidth()/2, Player.image:getHeight()/2)
   for i,v in ipairs(Coins) do
     love.graphics.circle("line", v.x, v.y, v.size)
     love.graphics.draw(v.image, v.x, v.y, 0, 1, 1, v.image:getWidth()/2, v.image:getHeight()/2)
   end
-end
-
-function CheckCollision(p1, p2)
-  local distance = math.sqrt((p1.x - p2.x)^2 + (p1.y - p2.y)^2)
-  --return whether the distance is lower than the sum of the sizes
-  return distance < p1.size + p2.size
+  --resets all coordinate transformations. Does not affect what you have already drawn.
+  love.graphics.pop() --pull the copy of the state of the stack and apply it
+  love.graphics.print(Score, 10, 10)
 end
 
 function love.keypressed(key)
